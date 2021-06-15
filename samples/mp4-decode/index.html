@@ -14,7 +14,68 @@
   </p>
   <canvas></canvas>
 </body>
+<script>
+  var testTargetFrame = null;
+  var flattenFrameBuf, flattenFrameBufManel;
 
+  function flattenVideoFrame(frame) {
+    const buf1 = new Uint8Array(frame.planes[0].length);
+    const buf2 = new Uint8Array(frame.planes[1].length);
+    const buf3 = new Uint8Array(frame.planes[2].length);
+
+    frame.planes[0].readInto(buf1);
+    frame.planes[1].readInto(buf2);
+    frame.planes[2].readInto(buf3);
+
+    return new Uint8Array([...buf1, ...buf2, ...buf3]);
+  }
+
+
+
+  // function flattenVideoFrame(frame) {
+  //   const totalLenght = frame.planes.map(plane => plane.length).reduce((x, y) => x + y, 0);
+  //   const buf = new Uint8Array(totalLenght);
+
+  //   for (let i = 0; i < frame.planes.length; i++) {
+  //     const startIndex = i >= 1 ? frame.planes[i - 1].length : 0;
+  //     const endIndex = startIndex + frame.planes[i].length;
+  //     console.log('startIndex: ', startIndex);
+  //     const subBuf = buf.subarray(startIndex, endIndex);
+  //     frame.planes[i].readInto(subBuf);
+  //   }
+
+  //   return buf;
+  // }
+
+  // function flattenVideoFrameManel(frame) {
+  //   const totalLenght = frame.planes.map(plane => plane.length).reduce((x, y) => x + y, 0);
+  //   const imageBuffer = new Uint8Array(totalLenght);
+  //   let buffer = null;
+  //   for (let i = 0, j = 0; i < frame.planes.length; j += buffer[i].length, i++) {
+  //       buffer  = new Uint8Array(frame.planes[i].length);
+  //       frame.planes[i].readInto(buffer);
+  //       imageBuffer.set(buffer, j);
+  //   }
+  //   console.log('manel!');
+  //   return imageBuffer;
+  // }
+
+  function processVideoFrame(frame_) {
+    const frame = frame_.clone();
+    flattenFrameBuf = flattenVideoFrame(frame);
+
+    const file = new Blob([flattenFrameBuf], {type: 'application/octet-stream'});
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = name;
+    a.click();
+
+    testTargetFrame = frame;
+    console.log('there....')
+    // frame.close();
+  }
+</script>
 <script src="mp4box.all.min.js"></script>
 
 <script type="module">
@@ -30,6 +91,12 @@
 
   async function onFrame(frame) {
     let now = performance.now();
+
+    // console.log('frameCount: ' + frameCount);
+    if (frameCount === 30) {
+      console.log('here....');
+      processVideoFrame(frame);
+    }
 
     ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
     frame.close();
@@ -52,6 +119,8 @@
   });
 
   demuxer.getConfig().then((config) => {
+    config.codedWidth = 640;
+    config.codedHeight = 360;
     canvas.height = config.codedHeight;
     canvas.width = config.codedWidth;
 
